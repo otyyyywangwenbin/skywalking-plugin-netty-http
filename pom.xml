@@ -1,0 +1,82 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>wangwb.demo</groupId>
+	<artifactId>apm-netty-http-4.x-plugin</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+
+	<properties>
+		<maven.compiler.source>1.6</maven.compiler.source>
+		<maven.compiler.target>1.6</maven.compiler.target>
+		<compiler.version>1.6</compiler.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<shade.package>org.apache.skywalking.apm.dependencies</shade.package>
+
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<sdk.plugin.related.dir />
+		<shade.net.bytebuddy.source>net.bytebuddy</shade.net.bytebuddy.source>
+		<shade.net.bytebuddy.target>${shade.package}.${shade.net.bytebuddy.source}</shade.net.bytebuddy.target>
+
+		<agent.package.dest.dir>${project.build.directory}${sdk.plugin.related.dir}/../../../../skywalking-agent</agent.package.dest.dir>
+		<plugin.dest.dir>${agent.package.dest.dir}/plugins</plugin.dest.dir>
+
+		<ant-contrib.version>1.0b3</ant-contrib.version>
+		<ant-nodeps.version>1.8.1</ant-nodeps.version>
+	</properties>
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.skywalking</groupId>
+			<artifactId>apm-agent-core</artifactId>
+			<version>5.0.0-RC2</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.skywalking</groupId>
+			<artifactId>apm-util</artifactId>
+			<version>5.0.0-RC2</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-all</artifactId>
+			<version>4.1.27.Final</version>
+			<scope>provided</scope>
+		</dependency>
+
+	</dependencies>
+
+
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-shade-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<shadedArtifactAttached>false</shadedArtifactAttached>
+							<createDependencyReducedPom>true</createDependencyReducedPom>
+							<createSourcesJar>true</createSourcesJar>
+							<shadeSourcesContent>true</shadeSourcesContent>
+							<relocations>
+								<relocation>
+									<pattern>${shade.net.bytebuddy.source}</pattern>
+									<shadedPattern>${shade.net.bytebuddy.target}</shadedPattern>
+								</relocation>
+							</relocations>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+
+</project>
