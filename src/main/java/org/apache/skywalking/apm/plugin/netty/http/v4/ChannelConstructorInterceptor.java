@@ -28,12 +28,12 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
             return;
         }
         AbstractChannel channel = (AbstractChannel) objInst;
-        channel.pipeline().addLast(new TraceHandler()); /* maybe has order problem */
+        channel.pipeline().addLast(new ErrorHandler()); /* maybe has order problem */
     }
 
-    private static class TraceHandler extends ChannelDuplexHandler {
+    private static class ErrorHandler extends ChannelDuplexHandler {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            TracingHelper.onException(cause, ctx);
+            TraceHelper.onException(cause, ctx);
             ctx.fireExceptionCaught(cause);
         }
 
@@ -41,7 +41,7 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
             ctx.connect(remoteAddress, localAddress, promise.addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture future) {
                     if (future.cause() != null) {
-                        TracingHelper.onException(future.cause(), ctx);
+                        TraceHelper.onException(future.cause(), ctx);
                     }
                 }
             }));
@@ -51,7 +51,7 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
             ctx.write(msg, promise.addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture future) {
                     if (future.cause() != null) {
-                        TracingHelper.onException(future.cause(), ctx);
+                        TraceHelper.onException(future.cause(), ctx);
                     }
                 }
             }));

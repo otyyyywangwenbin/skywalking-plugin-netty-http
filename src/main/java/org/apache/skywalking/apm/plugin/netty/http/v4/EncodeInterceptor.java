@@ -26,7 +26,7 @@ public class EncodeInterceptor implements InstanceMethodsAroundInterceptor {
         Object msg = allArguments[1];
         if (msg instanceof HttpRequest) {
             HttpRequest request = (HttpRequest) msg;
-            TracingHelper.onClientSend(request, context);
+            TraceHelper.onClientSend(request, context);
         }
         return;
     }
@@ -36,7 +36,7 @@ public class EncodeInterceptor implements InstanceMethodsAroundInterceptor {
         Object msg = allArguments[1];
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
-            TracingHelper.onServerSend(response, context);
+            TraceHelper.onServerSend(response, context);
         }
         return ret;
     }

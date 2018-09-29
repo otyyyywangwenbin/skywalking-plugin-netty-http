@@ -25,11 +25,17 @@ import io.netty.handler.codec.http.HttpResponse;
  * @author wangwb (mailto:wangwb@primeton.com)
  */
 
-public class TracingHelper {
+public class TraceHelper {
 
     public static void onException(Throwable cause, ChannelHandlerContext context) {
-        System.out.println("====$$$$$====");
-        cause.printStackTrace();
+        ContextSnapshot contextSnapshot = context.channel().attr(KEY_CONTEXT_SNAPSHOT).get();
+        if (contextSnapshot == null) {
+            return;
+        }
+        AbstractSpan span = ContextManager.createLocalSpan("netty-http/error");
+        ContextManager.continued(contextSnapshot);
+        span.errorOccurred().log(cause);
+        ContextManager.stopSpan(); /*stop localspan*/
     }
 
     public static void onServerReceived(HttpRequest request, ChannelHandlerContext context) {
@@ -45,8 +51,6 @@ public class TracingHelper {
         span.setComponent(COMPONENT_NETTY_HTTP_SERVER);
         SpanLayer.asHttp(span);
 
-        System.out.println("============>>>" + ContextManager.activeSpan().getClass() + "," + ContextManager.activeSpan().getSpanId());
-
         context.channel().attr(KEY_CONTEXT_SNAPSHOT).set(ContextManager.capture());
     }
 
@@ -55,11 +59,9 @@ public class TracingHelper {
         if (contextSnapshot == null) {
             return;
         }
-        ContextManager.createLocalSpan("netty-http-server/out");
+        ContextManager.createLocalSpan("netty-http-server/out"); /* only for continued success */
         ContextManager.continued(contextSnapshot);
         ContextManager.stopSpan(); /*stop localspan (netty-http-server/out) */
-
-        System.out.println("============???" + ContextManager.activeSpan().getClass() + "," + ContextManager.activeSpan().getSpanId());
 
         Tags.STATUS_CODE.set(ContextManager.activeSpan(), String.valueOf(response.status().code()));
         ContextManager.stopSpan(); /*stop entryspan */

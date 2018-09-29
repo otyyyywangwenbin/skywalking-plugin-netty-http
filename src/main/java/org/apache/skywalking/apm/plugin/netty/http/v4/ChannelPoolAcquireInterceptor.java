@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 
 import org.apache.skywalking.apm.agent.core.context.ContextManager;
 import org.apache.skywalking.apm.agent.core.context.ContextSnapshot;
+import org.apache.skywalking.apm.agent.core.context.trace.AbstractSpan;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.EnhancedInstance;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.InstanceMethodsAroundInterceptor;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.MethodInterceptResult;
@@ -29,7 +30,7 @@ public class ChannelPoolAcquireInterceptor implements InstanceMethodsAroundInter
     @SuppressWarnings("unchecked")
     public void beforeMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes, MethodInterceptResult result) throws Throwable {
         Promise<Channel> promise = (Promise<Channel>) allArguments[0];
-        promise.addListener(new ContextSnapshotBindingListener());
+        promise.addListener(new ContextSnapshotChannelBinder());
         return;
     }
 
@@ -41,15 +42,15 @@ public class ChannelPoolAcquireInterceptor implements InstanceMethodsAroundInter
         return;
     }
 
-    private static class ContextSnapshotBindingListener implements GenericFutureListener<Future<Channel>> {
+    private static class ContextSnapshotChannelBinder implements GenericFutureListener<Future<Channel>> {
 
         private ContextSnapshot contextSnapshot;
 
-        private ContextSnapshotBindingListener() {
+        private ContextSnapshotChannelBinder() {
             if (ContextManager.isActive()) {
                 /* 
                  * fixedchannelpool.acquire(promis)的方法实现会调用到channelpool.acquire(promis), 所以该方法会被调用2遍
-                 * 为什么不直接只处理channelpool.acquire(promis), 因为如果是由fixedchannelpool.acquire(promis)触发的就有可能是跨线程的, 那么这个ContextManager.isActive()就肯定为false
+                 * 为什么不只处理channelpool.acquire(promis)? 因为如果是由fixedchannelpool.acquire(promis)触发的就有可能是跨线程的, 那么这个ContextManager.isActive()就肯定为false
                  */
                 this.contextSnapshot = ContextManager.capture();
             }
@@ -61,6 +62,13 @@ public class ChannelPoolAcquireInterceptor implements InstanceMethodsAroundInter
             }
             if (future.isSuccess()) {
                 future.get().attr(KEY_CONTEXT_SNAPSHOT).set(contextSnapshot);
+            } else {
+                AbstractSpan span = ContextManager.createLocalSpan("netty-channel-pool-acquire-failed");
+                ContextManager.continued(contextSnapshot);
+                if (future.cause() != null) {
+                    span.errorOccurred().log(future.cause());
+                }
+                ContextManager.stopSpan();
             }
         }
     }
