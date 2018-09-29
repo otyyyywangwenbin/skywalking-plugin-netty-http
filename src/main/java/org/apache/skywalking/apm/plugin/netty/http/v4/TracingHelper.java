@@ -18,7 +18,6 @@ import org.apache.skywalking.apm.agent.core.context.trace.SpanLayer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
-import io.netty.util.Attribute;
 
 /**
  * TODO 此处填写 class 信息
@@ -26,8 +25,14 @@ import io.netty.util.Attribute;
  * @author wangwb (mailto:wangwb@primeton.com)
  */
 
-public class TraceHelper {
-    public static void receivedServerRequest(HttpRequest request, ChannelHandlerContext context) {
+public class TracingHelper {
+
+    public static void onException(Throwable cause, ChannelHandlerContext context) {
+        System.out.println("====$$$$$====");
+        cause.printStackTrace();
+    }
+
+    public static void onServerReceived(HttpRequest request, ChannelHandlerContext context) {
         ContextCarrier contextCarrier = new ContextCarrier();
         CarrierItem next = contextCarrier.items();
         while (next.hasNext()) {
@@ -39,22 +44,34 @@ public class TraceHelper {
         Tags.HTTP.METHOD.set(span, request.method().name());
         span.setComponent(COMPONENT_NETTY_HTTP_SERVER);
         SpanLayer.asHttp(span);
+
+        System.out.println("============>>>" + ContextManager.activeSpan().getClass() + "," + ContextManager.activeSpan().getSpanId());
+
+        context.channel().attr(KEY_CONTEXT_SNAPSHOT).set(ContextManager.capture());
     }
 
-    public static void sendServerResponse(HttpResponse response, ChannelHandlerContext context) {
-        Tags.STATUS_CODE.set(ContextManager.activeSpan(), String.valueOf(response.status().code()));
-        ContextManager.stopSpan();
-    }
-
-    public static void sendClientRequest(HttpRequest request, ChannelHandlerContext context) {
-        Attribute<ContextSnapshot> attr = context.channel().attr(KEY_CONTEXT_SNAPSHOT);
-        ContextSnapshot contextSnapshot = attr.get();
-        attr.set(null);
+    public static void onServerSend(HttpResponse response, ChannelHandlerContext context) {
+        ContextSnapshot contextSnapshot = context.channel().attr(KEY_CONTEXT_SNAPSHOT).getAndSet(null);
         if (contextSnapshot == null) {
             return;
         }
-        ContextManager.createLocalSpan("netty-http-client/local");
+        ContextManager.createLocalSpan("netty-http-server/out");
         ContextManager.continued(contextSnapshot);
+        ContextManager.stopSpan(); /*stop localspan (netty-http-server/out) */
+
+        System.out.println("============???" + ContextManager.activeSpan().getClass() + "," + ContextManager.activeSpan().getSpanId());
+
+        Tags.STATUS_CODE.set(ContextManager.activeSpan(), String.valueOf(response.status().code()));
+        ContextManager.stopSpan(); /*stop entryspan */
+    }
+
+    public static void onClientSend(HttpRequest request, ChannelHandlerContext context) {
+        ContextManager.createLocalSpan("netty-http-client/out");
+        ContextSnapshot contextSnapshot = context.channel().attr(KEY_CONTEXT_SNAPSHOT).get();
+        if (contextSnapshot != null) {
+            // 适用于前面没有span, 只是由client开始才创建第一个span
+            ContextManager.continued(contextSnapshot);
+        }
         ContextCarrier contextCarrier = new ContextCarrier();
         String uri = request.uri();
         String remoteAddress = String.valueOf(context.channel().remoteAddress());
@@ -71,9 +88,17 @@ public class TraceHelper {
         context.channel().attr(KEY_CONTEXT_SNAPSHOT).set(ContextManager.capture());
     }
 
-    public static void receivedClientResponse(HttpResponse response, ChannelHandlerContext context) {
+    public static void onClientReceived(HttpResponse response, ChannelHandlerContext context) {
+        ContextSnapshot contextSnapshot = context.channel().attr(KEY_CONTEXT_SNAPSHOT).getAndSet(null);
+        if (contextSnapshot == null) {
+            return;
+        }
+        ContextManager.createLocalSpan("netty-http-client/in");
+        ContextManager.continued(contextSnapshot);
+        ContextManager.stopSpan(); /* stop localspan (netty-http-client/in) */
+
         Tags.STATUS_CODE.set(ContextManager.activeSpan(), String.valueOf(response.status().code()));
         ContextManager.stopSpan(); // stop exitspan
-        ContextManager.stopSpan(); // stop localspan
+        ContextManager.stopSpan(); // stop localspan (netty-http-client/out)
     }
 }

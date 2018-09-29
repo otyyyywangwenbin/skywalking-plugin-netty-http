@@ -24,9 +24,9 @@ public class EncodeInterceptor implements InstanceMethodsAroundInterceptor {
     public void beforeMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes, MethodInterceptResult result) throws Throwable {
         ChannelHandlerContext context = (ChannelHandlerContext) allArguments[0];
         Object msg = allArguments[1];
-        if (msg instanceof HttpRequest) { // Client Request
+        if (msg instanceof HttpRequest) {
             HttpRequest request = (HttpRequest) msg;
-            TraceHelper.sendClientRequest(request, context);
+            TracingHelper.onClientSend(request, context);
         }
         return;
     }
@@ -34,9 +34,9 @@ public class EncodeInterceptor implements InstanceMethodsAroundInterceptor {
     public Object afterMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes, Object ret) throws Throwable {
         ChannelHandlerContext context = (ChannelHandlerContext) allArguments[0];
         Object msg = allArguments[1];
-        if (msg instanceof HttpResponse) { // Server Response
+        if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
-            TraceHelper.sendServerResponse(response, context);
+            TracingHelper.onServerSend(response, context);
         }
         return ret;
     }

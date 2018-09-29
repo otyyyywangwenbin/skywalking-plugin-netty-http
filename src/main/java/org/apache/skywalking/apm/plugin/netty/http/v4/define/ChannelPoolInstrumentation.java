@@ -4,7 +4,8 @@
 package org.apache.skywalking.apm.plugin.netty.http.v4.define;
 
 import static net.bytebuddy.matcher.ElementMatchers.named;
-import static org.apache.skywalking.apm.agent.core.plugin.match.NameMatch.byName;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+import static org.apache.skywalking.apm.agent.core.plugin.match.MultiClassNameMatch.byMultiClassMatch;
 
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.ConstructorInterceptPoint;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.InstanceMethodsInterceptPoint;
@@ -20,12 +21,15 @@ import net.bytebuddy.matcher.ElementMatcher;
  * @author wangwb (mailto:wangwb@primeton.com)
  */
 
-public class DefaultPromiseInstrumentation extends ClassInstanceMethodsEnhancePluginDefine {
-    private static final String ENHANCE_CLASS = "io.netty.util.concurrent.DefaultPromise";
-    private static final String ADD_LISTENER_INTERCEPT_CLASS = "org.apache.skywalking.apm.plugin.netty.http.v4.AddListenerInterceptor";
+public class ChannelPoolInstrumentation extends ClassInstanceMethodsEnhancePluginDefine {
+    private static final String[] ENHANCE_CLASSES = new String[] {
+            "io.netty.channel.pool.SimpleChannelPool",
+            "io.netty.channel.pool.FixedChannelPool" };
+
+    private static final String ACQUIRE_INTERCEPT_CLASS = "org.apache.skywalking.apm.plugin.netty.http.v4.ChannelPoolAcquireInterceptor";
 
     protected ClassMatch enhanceClass() {
-        return byName(ENHANCE_CLASS);
+        return byMultiClassMatch(ENHANCE_CLASSES);
     }
 
     protected ConstructorInterceptPoint[] getConstructorsInterceptPoints() {
@@ -36,15 +40,15 @@ public class DefaultPromiseInstrumentation extends ClassInstanceMethodsEnhancePl
         return new InstanceMethodsInterceptPoint[] {
                 new InstanceMethodsInterceptPoint() {
                     public ElementMatcher<MethodDescription> getMethodsMatcher() {
-                        return named("addListener");
+                        return named("acquire").and(takesArguments(1));
                     }
 
                     public String getMethodsInterceptor() {
-                        return ADD_LISTENER_INTERCEPT_CLASS;
+                        return ACQUIRE_INTERCEPT_CLASS;
                     }
 
                     public boolean isOverrideArgs() {
-                        return true;
+                        return false;
                     }
                 } };
     }

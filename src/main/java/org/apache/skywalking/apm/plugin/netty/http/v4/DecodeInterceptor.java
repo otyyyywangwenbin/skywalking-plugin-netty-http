@@ -35,10 +35,10 @@ public class DecodeInterceptor implements InstanceMethodsAroundInterceptor {
         for (int i = size - 1; i >= 0; i--) {
             Object obj = out.get(i);
             if (obj instanceof HttpRequest) {
-                TraceHelper.receivedServerRequest((HttpRequest) obj, context);
+                TracingHelper.onServerReceived((HttpRequest) obj, context);
                 break;
             } else if (obj instanceof HttpResponse) {
-                TraceHelper.receivedClientResponse((HttpResponse) obj, context);
+                TracingHelper.onClientReceived((HttpResponse) obj, context);
                 break;
             }
         }

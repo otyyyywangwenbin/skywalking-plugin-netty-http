@@ -1,3 +1,4 @@
 netty-4.x=org.apache.skywalking.apm.plugin.netty.http.v4.define.HttpObjectDecoderInstrumentation
 netty-4.x=org.apache.skywalking.apm.plugin.netty.http.v4.define.HttpObjectEncoderInstrumentation
-netty-4.x=org.apache.skywalking.apm.plugin.netty.http.v4.define.DefaultPromiseInstrumentation
+netty-4.x=org.apache.skywalking.apm.plugin.netty.http.v4.define.ChannelInstrumentation
+netty-4.x=org.apache.skywalking.apm.plugin.netty.http.v4.define.ChannelPoolInstrumentation
