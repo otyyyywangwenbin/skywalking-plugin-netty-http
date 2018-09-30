@@ -66,7 +66,7 @@ public class TracingHelper {
 
     public static void onServerRequest(HttpRequest request, ChannelHandlerContext context) {
         if (ContextManager.isActive()) {
-            setTracingContext(null); /* 说明上一个请求的response还没有返回, 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null */
+            setTracingContext(null); /* 说明上一个请求的response还没有发出, 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null, 延迟设置null是为了后面的其他plugin还可以使用ContextManager接口 */
         }
         ContextCarrier contextCarrier = new ContextCarrier();
         CarrierItem next = contextCarrier.items();
@@ -94,15 +94,20 @@ public class TracingHelper {
 
     public static void onClientRequest(HttpRequest request, ChannelHandlerContext context) {
         AbstractTracerContext tracingContext = context.channel().attr(KEY_CONTEXT).get();
-        if (tracingContext == null) {
-            // 需要考虑前面没有span, 由client开始才创建第一个span吗??
-            return;
-        }
         ContextCarrier contextCarrier = new ContextCarrier();
         String uri = request.uri();
         String remoteAddress = String.valueOf(context.channel().remoteAddress());
-        AbstractSpan span = tracingContext.createExitSpan(uri, remoteAddress.charAt(0) == '/' ? remoteAddress.substring(1) : remoteAddress);
-        tracingContext.inject(contextCarrier);
+        AbstractSpan span = null;
+        if (tracingContext != null) {
+            span = tracingContext.createExitSpan(uri, remoteAddress.charAt(0) == '/' ? remoteAddress.substring(1) : remoteAddress);
+            tracingContext.inject(contextCarrier);
+        } else {
+            if (ContextManager.isActive()) {
+                setTracingContext(null); /* 说明上一个请求的response还没有收到, 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null */
+            }
+            span = ContextManager.createExitSpan(uri, contextCarrier, remoteAddress.charAt(0) == '/' ? remoteAddress.substring(1) : remoteAddress);
+            context.channel().attr(KEY_CONTEXT).set(getTracingContext());
+        }
         Tags.URL.set(span, request.uri());
         Tags.HTTP.METHOD.set(span, request.method().name());
         span.setComponent(COMPONENT_NETTY_HTTP_CLIENT);
