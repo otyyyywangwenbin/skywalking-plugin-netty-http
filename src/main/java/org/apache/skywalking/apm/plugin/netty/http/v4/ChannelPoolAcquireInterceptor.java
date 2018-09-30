@@ -3,13 +3,12 @@
  */
 package org.apache.skywalking.apm.plugin.netty.http.v4;
 
-import static org.apache.skywalking.apm.plugin.netty.http.v4.Constants.KEY_CONTEXT_SNAPSHOT;
+import static org.apache.skywalking.apm.plugin.netty.http.v4.Constants.KEY_CONTEXT;
 
 import java.lang.reflect.Method;
 
+import org.apache.skywalking.apm.agent.core.context.AbstractTracerContext;
 import org.apache.skywalking.apm.agent.core.context.ContextManager;
-import org.apache.skywalking.apm.agent.core.context.ContextSnapshot;
-import org.apache.skywalking.apm.agent.core.context.trace.AbstractSpan;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.EnhancedInstance;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.InstanceMethodsAroundInterceptor;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.MethodInterceptResult;
@@ -30,7 +29,7 @@ public class ChannelPoolAcquireInterceptor implements InstanceMethodsAroundInter
     @SuppressWarnings("unchecked")
     public void beforeMethod(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes, MethodInterceptResult result) throws Throwable {
         Promise<Channel> promise = (Promise<Channel>) allArguments[0];
-        promise.addListener(new ContextSnapshotChannelBinder());
+        promise.addListener(new TracingContextBinder());
         return;
     }
 
@@ -42,33 +41,30 @@ public class ChannelPoolAcquireInterceptor implements InstanceMethodsAroundInter
         return;
     }
 
-    private static class ContextSnapshotChannelBinder implements GenericFutureListener<Future<Channel>> {
+    private static class TracingContextBinder implements GenericFutureListener<Future<Channel>> {
 
-        private ContextSnapshot contextSnapshot;
+        private AbstractTracerContext tracingContext;
 
-        private ContextSnapshotChannelBinder() {
+        private TracingContextBinder() {
             if (ContextManager.isActive()) {
                 /* 
-                 * fixedchannelpool.acquire(promis)的方法实现会调用到channelpool.acquire(promis), 所以该方法会被调用2遍
+                 * fixedchannelpool.acquire(promis)的方法实现会调用到channelpool.acquire(promis), 所以该方法会被调用2遍, 第2遍调的时候isActive==false
                  * 为什么不只处理channelpool.acquire(promis)? 因为如果是由fixedchannelpool.acquire(promis)触发的就有可能是跨线程的, 那么这个ContextManager.isActive()就肯定为false
                  */
-                this.contextSnapshot = ContextManager.capture();
+                this.tracingContext = TracingHelper.getTracingContext();
             }
         }
 
         public void operationComplete(Future<Channel> future) throws Exception {
-            if (contextSnapshot == null) {
+            if (tracingContext == null) {
                 return;
             }
             if (future.isSuccess()) {
-                future.get().attr(KEY_CONTEXT_SNAPSHOT).set(contextSnapshot);
+                future.get().attr(KEY_CONTEXT).set(tracingContext);
             } else {
-                AbstractSpan span = ContextManager.createLocalSpan("netty-channel-pool-acquire-failed");
-                ContextManager.continued(contextSnapshot);
                 if (future.cause() != null) {
-                    span.errorOccurred().log(future.cause());
+                    tracingContext.activeSpan().errorOccurred().log(future.cause());
                 }
-                ContextManager.stopSpan();
             }
         }
     }

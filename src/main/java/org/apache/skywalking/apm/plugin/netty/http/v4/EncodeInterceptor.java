@@ -5,7 +5,6 @@ package org.apache.skywalking.apm.plugin.netty.http.v4;
 
 import java.lang.reflect.Method;
 
-import org.apache.skywalking.apm.agent.core.context.ContextManager;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.EnhancedInstance;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.InstanceMethodsAroundInterceptor;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.MethodInterceptResult;
@@ -26,7 +25,7 @@ public class EncodeInterceptor implements InstanceMethodsAroundInterceptor {
         Object msg = allArguments[1];
         if (msg instanceof HttpRequest) {
             HttpRequest request = (HttpRequest) msg;
-            TraceHelper.onClientSend(request, context);
+            TracingHelper.onClientRequest(request, context);
         }
         return;
     }
@@ -36,12 +35,13 @@ public class EncodeInterceptor implements InstanceMethodsAroundInterceptor {
         Object msg = allArguments[1];
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
-            TraceHelper.onServerSend(response, context);
+            TracingHelper.onServerResponse(response, context);
         }
         return ret;
     }
 
     public void handleMethodException(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes, Throwable t) {
-        ContextManager.activeSpan().errorOccurred().log(t);
+        ChannelHandlerContext context = (ChannelHandlerContext) allArguments[0];
+        TracingHelper.onException(t, context);
     }
 }

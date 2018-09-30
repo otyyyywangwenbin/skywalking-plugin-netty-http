@@ -24,8 +24,8 @@ import io.netty.handler.codec.http.HttpResponse;
  *
  * @author wangwb (mailto:wangwb@primeton.com)
  */
-
-public class TraceHelper {
+@Deprecated
+public class TraceHelper2 {
 
     public static void onException(Throwable cause, ChannelHandlerContext context) {
         ContextSnapshot contextSnapshot = context.channel().attr(KEY_CONTEXT_SNAPSHOT).get();
@@ -36,9 +36,14 @@ public class TraceHelper {
         ContextManager.continued(contextSnapshot);
         span.errorOccurred().log(cause);
         ContextManager.stopSpan(); /*stop localspan*/
+
+        context.channel().attr(KEY_CONTEXT_SNAPSHOT).set(ContextManager.capture());
     }
 
     public static void onServerReceived(HttpRequest request, ChannelHandlerContext context) {
+        if (ContextManager.isActive()) {
+
+        }
         ContextCarrier contextCarrier = new ContextCarrier();
         CarrierItem next = contextCarrier.items();
         while (next.hasNext()) {
@@ -97,7 +102,8 @@ public class TraceHelper {
         }
         ContextManager.createLocalSpan("netty-http-client/in");
         ContextManager.continued(contextSnapshot);
-        ContextManager.stopSpan(); /* stop localspan (netty-http-client/in) */
+        ContextManager.stopSpan(); /* stop localspan (netty-http-client/in)
+                                   */
 
         Tags.STATUS_CODE.set(ContextManager.activeSpan(), String.valueOf(response.status().code()));
         ContextManager.stopSpan(); // stop exitspan

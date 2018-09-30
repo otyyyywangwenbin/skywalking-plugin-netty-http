@@ -33,7 +33,7 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
 
     private static class ErrorHandler extends ChannelDuplexHandler {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            TraceHelper.onException(cause, ctx);
+            TracingHelper.onException(cause, ctx);
             ctx.fireExceptionCaught(cause);
         }
 
@@ -41,7 +41,7 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
             ctx.connect(remoteAddress, localAddress, promise.addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture future) {
                     if (future.cause() != null) {
-                        TraceHelper.onException(future.cause(), ctx);
+                        TracingHelper.onException(future.cause(), ctx);
                     }
                 }
             }));
@@ -51,7 +51,7 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
             ctx.write(msg, promise.addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture future) {
                     if (future.cause() != null) {
-                        TraceHelper.onException(future.cause(), ctx);
+                        TracingHelper.onException(future.cause(), ctx);
                     }
                 }
             }));

@@ -6,7 +6,6 @@ package org.apache.skywalking.apm.plugin.netty.http.v4;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import org.apache.skywalking.apm.agent.core.context.ContextManager;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.EnhancedInstance;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.InstanceMethodsAroundInterceptor;
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.enhance.MethodInterceptResult;
@@ -35,10 +34,10 @@ public class DecodeInterceptor implements InstanceMethodsAroundInterceptor {
         for (int i = size - 1; i >= 0; i--) {
             Object obj = out.get(i);
             if (obj instanceof HttpRequest) {
-                TraceHelper.onServerReceived((HttpRequest) obj, context);
+                TracingHelper.onServerRequest((HttpRequest) obj, context);
                 break;
             } else if (obj instanceof HttpResponse) {
-                TraceHelper.onClientReceived((HttpResponse) obj, context);
+                TracingHelper.onClientResponse((HttpResponse) obj, context);
                 break;
             }
         }
@@ -46,6 +45,7 @@ public class DecodeInterceptor implements InstanceMethodsAroundInterceptor {
     }
 
     public void handleMethodException(EnhancedInstance objInst, Method method, Object[] allArguments, Class<?>[] argumentsTypes, Throwable t) {
-        ContextManager.activeSpan().errorOccurred().log(t);
+        ChannelHandlerContext context = (ChannelHandlerContext) allArguments[0];
+        TracingHelper.onException(t, context);
     }
 }
