@@ -28,7 +28,7 @@ public class ChannelConstructorInterceptor implements InstanceConstructorInterce
             return;
         }
         AbstractChannel channel = (AbstractChannel) objInst;
-        channel.pipeline().addLast(new ErrorHandler()); /* maybe has order problem */
+        channel.pipeline().addLast(new ErrorHandler()); /* 可能有顺序问题 */
     }
 
     private static class ErrorHandler extends ChannelDuplexHandler {
