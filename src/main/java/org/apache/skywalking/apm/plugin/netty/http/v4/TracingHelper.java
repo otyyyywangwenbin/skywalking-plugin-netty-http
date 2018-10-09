@@ -16,6 +16,8 @@ import org.apache.skywalking.apm.agent.core.context.ContextManager;
 import org.apache.skywalking.apm.agent.core.context.tag.Tags;
 import org.apache.skywalking.apm.agent.core.context.trace.AbstractSpan;
 import org.apache.skywalking.apm.agent.core.context.trace.SpanLayer;
+import org.apache.skywalking.apm.agent.core.logging.api.ILog;
+import org.apache.skywalking.apm.agent.core.logging.api.LogManager;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
@@ -28,6 +30,7 @@ import io.netty.handler.codec.http.HttpResponse;
  */
 
 public class TracingHelper {
+    private static final ILog logger = LogManager.getLogger(TracingHelper.class);
 
     @SuppressWarnings("unchecked")
     public static AbstractTracerContext getTracingContext() {
@@ -38,7 +41,7 @@ public class TracingHelper {
                 ThreadLocal<AbstractTracerContext> CONTEXT = (ThreadLocal<AbstractTracerContext>) f.get(ContextManager.class);
                 return CONTEXT.get();
             } catch (Throwable e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
         return null;
@@ -52,7 +55,7 @@ public class TracingHelper {
             ThreadLocal<AbstractTracerContext> CONTEXT = (ThreadLocal<AbstractTracerContext>) f.get(ContextManager.class);
             CONTEXT.set(context);
         } catch (Throwable e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 
