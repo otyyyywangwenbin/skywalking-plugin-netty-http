@@ -69,7 +69,7 @@ public class TracingHelper {
 
     public static void onServerRequest(HttpRequest request, ChannelHandlerContext context) {
         if (ContextManager.isActive()) {
-            setTracingContext(null); /* 说明上一个请求的response还没有发出, 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null, 延迟设置null是为了后面的其他plugin还可以使用ContextManager接口 */
+            setTracingContext(null); /* 说明上一个请求还没有处理完(server response还没有发出), 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null, 延迟设置null是为了后面的其他plugin还可以使用ContextManager接口 */
         }
         ContextCarrier contextCarrier = new ContextCarrier();
         CarrierItem next = contextCarrier.items();
@@ -106,7 +106,7 @@ public class TracingHelper {
             tracingContext.inject(contextCarrier);
         } else {
             if (ContextManager.isActive()) {
-                setTracingContext(null); /* 说明上一个请求的response还没有收到, 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null */
+                setTracingContext(null); /* 说明上一个请求还没有处理完(client response还没有收到), 该线程又开始处理新的请求, 需要把线程变量CONTEXT设置成null *//* 和下面的ContextManager.createExitSpan是一对 */
             }
             span = ContextManager.createExitSpan(uri, contextCarrier, remoteAddress.charAt(0) == '/' ? remoteAddress.substring(1) : remoteAddress);
             context.channel().attr(KEY_CONTEXT).set(getTracingContext());
