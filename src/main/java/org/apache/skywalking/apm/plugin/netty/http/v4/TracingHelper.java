@@ -91,8 +91,14 @@ public class TracingHelper {
         if (tracingContext == null) {
             return;
         }
-        Tags.STATUS_CODE.set(tracingContext.activeSpan(), String.valueOf(response.status().code()));
-        tracingContext.stopSpan(tracingContext.activeSpan()); /*stop entryspan */
+
+        AbstractSpan span = tracingContext.activeSpan();
+        int scCode = response.status().code();
+        if (scCode < 200 || scCode >= 400) {
+            span.errorOccurred();
+        }
+        Tags.STATUS_CODE.set(span, String.valueOf(scCode));
+        tracingContext.stopSpan(span); /*stop entryspan */
     }
 
     public static void onClientRequest(HttpRequest request, ChannelHandlerContext context) {
@@ -127,7 +133,12 @@ public class TracingHelper {
         if (tracingContext == null) {
             return;
         }
-        Tags.STATUS_CODE.set(tracingContext.activeSpan(), String.valueOf(response.status().code()));
-        tracingContext.stopSpan(tracingContext.activeSpan()); // stop exitspan
+        AbstractSpan span = tracingContext.activeSpan();
+        int scCode = response.status().code();
+        if (scCode < 200 || scCode >= 400) {
+            span.errorOccurred();
+        }
+        Tags.STATUS_CODE.set(span, String.valueOf(response.status().code()));
+        tracingContext.stopSpan(span); // stop exitspan
     }
 }
